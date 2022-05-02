@@ -332,16 +332,17 @@ def play_max_inference_hash(S,i,j,val):
 ## playout functions
 
 # random playing function
-def playout(S, random_fun):
+def playout(S, play_fun, random_fun):
     while(True):
       if S.terminal():
         return S.score()
       else:
         i, j, val = random_fun(S)
-        S.play(i, j, val)
+        #S.play(i, j, val)
+        play_fun(S,i,j,val)
 
 # random maximal inference playing function
-def playout_max_inference(S, random_fun):
+def playout_max_inference(S, play_fun, random_fun):
     while(True):
       if S.terminal():
         return S.score()
@@ -351,7 +352,8 @@ def playout_max_inference(S, random_fun):
         while S.move_to_play:
           i ,j, val = S.move_to_play.popleft()
           # print("deque status before play:", self.move_to_play)
-          S.play_max_inference(i,j,val)
+          #S.play_max_inference(i,j,val)
+          play_fun(S,i,j,val)
         
   
 ######################
@@ -392,7 +394,7 @@ def mc_solve_attempt(q, S, mc_algo, playout_fun, play_fun, random_fun, n_playout
   return
 
 # mcts algo testing function
-def mc_test(time_budget, number_pbs, size, rm_rate, mc_algo, playout_fun, play_fun, random_fun, n_playouts, seed=1234, cst=0.4):
+def mc_test(time_budget, number_pbs, size, rm_rate, mc_algo, playout_fun, play_fun, random_fun, n_playouts, cst=0.4, seed=1234):
   n_solved = 0
   q = mp.Queue()
   random.seed(seed)
@@ -443,7 +445,7 @@ def flat_max_inference(board, n, playout_fun, play_fun, random_fun, cst=0.4): #2
                 b.play_max_inference(ii,jj,vall)
                 # play_fun(b, i, j, val)
               #r = b.playout_max_inference(random_fun)
-              r = playout_fun(b, random_fun)
+              r = playout_fun(b, play_fun, random_fun)
               if r == max_score: # win
                 return -1, -1, 0, b # number of playouts to win
               sum = sum + r
@@ -472,8 +474,8 @@ def flat(board, n, playout_fun, play_fun, random_fun, cst=0.4): #2, 3, 4
               b = copy.deepcopy (board)
               b.play (i, j, val)
 
-              r = b.playout(random_fun)
-              r = playout_fun(b, random_fun)
+              #r = b.playout(random_fun)
+              r = playout_fun(b, play_fun, random_fun)
               if r == max_score: # win
                 return -1, -1, 0, b # number of playouts to win
               sum = sum + r
@@ -541,7 +543,7 @@ def UCT (board, playout_fun, play_fun, random_fun, cst=0.4):
     else:
         add (board)
         #return board.playout (random_fun), copy.deepcopy(board)
-        return playout_fun (board, random_fun), copy.deepcopy(board)
+        return playout_fun (board, play_fun, random_fun), copy.deepcopy(board)
 
 def BestMoveUCT (board, n, playout_fun, play_fun, random_fun, cst=0.4):
     global Table
