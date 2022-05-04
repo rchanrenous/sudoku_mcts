@@ -65,6 +65,7 @@ class Sudoku:
           self.h ^= hashTable[self.grid[i][j]][i][j] 
     
     self.empty_cells = np.where(self.grid.flatten() == 0)[0].tolist()
+    self.domain_dict = {x : len(self.domain[x//self.size][x%self.size]) for x in self.empty_cells}
 
   # debugg function
   def check_domain(self):
@@ -74,7 +75,6 @@ class Sudoku:
           neigh = self.neighbor(i,j)
           for ii,jj in neigh:
             if self.grid[i][j] in self.domain[ii][jj]:
-              # print(self.grid)
               self.display_grid()
               print("Incorrect domain for:", i,j, "and", ii,jj)
               return False
@@ -127,6 +127,39 @@ class Sudoku:
       for jj in range(startj, endj):
         if (ii != i or jj != j) and val in self.domain[ii][jj]:
           self.domain[ii][jj].remove(val)
+        
+  def fc_dict(self,i,j,val):
+    for k in range(self.size):
+      if k != i and k != j:
+        if val in self.domain[i][k]:
+          self.domain[i][k].remove(val)
+          self.update_len_dict(i,k)
+        if val in self.domain[k][j]:
+          self.domain[k][j].remove(val)
+          self.update_len_dict(k,j)
+      elif k == i and k != j:
+        if val in self.domain[i][k]:
+          self.domain[i][k].remove(val)
+          self.update_len_dict(i,k)
+      elif k != i and k == j:
+        if val in self.domain[k][j]:
+          self.domain[k][j].remove(val)
+          self.update_len_dict(k,j)
+    # remove val from the domains of the square
+    starti = int((i)//self.base) * self.base
+    endi = starti + self.base
+    startj = int(j//self.base) * self.base
+    endj = startj + self.base
+    for ii in range(starti, endi):
+      for jj in range(startj, endj):
+        if (ii != i or jj != j) and val in self.domain[ii][jj]:
+          self.domain[ii][jj].remove(val) 
+          self.update_len_dict(ii,jj)
+    
+  def update_len_dict(self, i, j):
+    index = self.coordinate_to_index(i, j)
+    old = self.domain_dict[index]
+    self.domain_dict[index] = old-1
 
   # update function for maximal inference playing function
   def update(self,i,j,val):
@@ -135,7 +168,6 @@ class Sudoku:
       if val in self.domain[ii][jj]:
         self.domain[ii][jj].remove(val)
         if len(self.domain[ii][jj]) == 1:
-          # print("LOC:",(ii,jj), "val:", val, "domain:", self.domain[ii][jj][0])
           self.move_to_play.append((ii,jj,self.domain[ii][jj][0]))
       if (ii,jj,val) in self.move_to_play:
         self.move_to_play.remove((ii,jj,val))
@@ -147,8 +179,6 @@ class Sudoku:
     self.domain[i][j] = [val]
     # remove val from the domains of the variables that have a common constraint
     self.fc(i,j,val)
-
-    # print("play: {}, {}, {}".format(i, j, val))
     self.empty_cells.remove(self.coordinate_to_index(i, j))
 
   # play val at (i,j), revises the domains, and plays the moves with unique possible values
@@ -159,7 +189,6 @@ class Sudoku:
       self.domain[i][j] = [val]
       # remove val from the domains of the variables that have a common constraint
       # and play the cells with single value domain
-      # print("play: {}, {}, {}".format(i, j, val))
       self.empty_cells.remove(index)
       self.update(i,j,val)
 
@@ -173,7 +202,6 @@ class Sudoku:
     # remove val from the domains of the variables that have a common constraint
     self.fc(i,j,val)
 
-    # print("play: {}, {}, {}".format(i, j, val))
     self.empty_cells.remove(self.coordinate_to_index(i, j))
 
   # returns list of neighbors of cell (i,j)
@@ -198,12 +226,6 @@ class Sudoku:
       if jj < startj or jj >= endj:
         L.append((i,jj))
     return L
-
-  def play_fc(self, i, j, val):
-    pass
-
-  def play_ac(self, i, j, val):
-    pass
   
   # checks if the game is over
   def terminal(self):
@@ -242,13 +264,11 @@ class Sudoku:
         self.move_to_play.append((i,j,val))
         while self.move_to_play:
           i ,j, val = self.move_to_play.popleft()
-          # print("deque status before play:", self.move_to_play)
           self.play_max_inference(i,j,val)
   
   # vusualization of the neighbor of (i,j)
   def display_neighbor(self, i, j):
     L = self.neighbor(i,j)
-    # L = [t for t in gen]
     for i in range(self.size):
       if i%self.base == 0:
         print("-- "*(self.size + self.base//2 + 1))
@@ -285,7 +305,6 @@ def play(S,i,j,val):
     S.domain[i][j] = [val]
     # remove val from the domains of the variables that have a common constraint
     S.fc(i,j,val)
-    # print("play: {}, {}, {}".format(i, j, val))
     S.empty_cells.remove(S.coordinate_to_index(i, j))
 
 
@@ -300,19 +319,13 @@ def play_max_inference(S,i,j,val):
       S.update(i,j,val)
 
 def play_hash (S, i, j, val):
-    # col = int (S.grid [i] [j])
-    # if col != 0:
-    #     S.h = S.h ^ hashTable [col] [i] [j]
     S.h = S.h ^ hashTable [0] [i] [j]
     S.h = S.h ^ hashTable [val] [i] [j]
-    # S.h = S.h ^ hashTurn
 
     S.grid[i,j] = val
     S.domain[i][j] = [val]
     # remove val from the domains of the variables that have a common constraint
     S.fc(i,j,val)
-
-    # print("play: {}, {}, {}".format(i, j, val))
     S.empty_cells.remove(S.coordinate_to_index(i, j))
 
 def play_max_inference_hash(S,i,j,val):
@@ -327,6 +340,17 @@ def play_max_inference_hash(S,i,j,val):
       # and play the cells with single value domain
       S.empty_cells.remove(index)
       S.update(i,j,val)
+        
+def play_dict(S,i,j,val):
+    # put value in coordinate i, j
+    S.grid[i,j] = val
+    S.domain[i][j] = [val]
+    index = S.coordinate_to_index(i, j)
+    S.domain_dict.pop(index, None)
+    S.empty_cells.remove(index,)
+    # remove val from the domains of the variables that have a common constraint
+    S.fc_dict(i,j,val)
+
 
 ######################
 ## playout functions
@@ -338,7 +362,6 @@ def playout(S, play_fun, random_fun):
         return S.score()
       else:
         i, j, val = random_fun(S)
-        #S.play(i, j, val)
         play_fun(S,i,j,val)
 
 # random maximal inference playing function
@@ -351,8 +374,6 @@ def playout_max_inference(S, play_fun, random_fun):
         S.move_to_play.append((i,j,val))
         while S.move_to_play:
           i ,j, val = S.move_to_play.popleft()
-          # print("deque status before play:", self.move_to_play)
-          #S.play_max_inference(i,j,val)
           play_fun(S,i,j,val)
         
   
@@ -371,6 +392,14 @@ def random_values(board):
   empty_cells_coordinate = [board.index_to_coordinate(index) for index in board.empty_cells]
   list_possible = [[coord[0], coord[1], a] for coord in empty_cells_coordinate for a in board.domain[coord[0]][coord[1]]]
   i, j, val = random.choice(list_possible)
+  return i, j, val
+
+# picks randomly a move from the set of possible values of the empty cell with the smallest domain
+def random_priority(board):
+  m_dict = board.domain_dict
+  m_dict = sorted(m_dict.items(), key=lambda item: item[1])
+  i, j = board.index_to_coordinate(m_dict[0][0])
+  val = random.choice(board.domain[i][j])
   return i, j, val
 
 
@@ -401,7 +430,6 @@ def mc_test(time_budget, number_pbs, size, rm_rate, mc_algo, playout_fun, play_f
   t_start = time.time()
   for i in range(number_pbs):
     S = Sudoku(size, rm_rate)
-    # a = 1
     start = time.time()
     while time.time() - start < time_budget:
         S_copy = copy.deepcopy(S)
@@ -422,10 +450,8 @@ def mc_test(time_budget, number_pbs, size, rm_rate, mc_algo, playout_fun, play_f
 ## FLAT mc
 
 def flat_max_inference(board, n, playout_fun, play_fun, random_fun, cst=0.4): #2, 3, 4
-    # n_playouts = 0
     moves = board.empty_cells
     max_score = board.size**2
-    # print(moves)
     bestScore = 0
     bestMove = 0
     bestVal = 0
@@ -439,15 +465,12 @@ def flat_max_inference(board, n, playout_fun, play_fun, random_fun, cst=0.4): #2
           for nn in range (n):
               b = copy.deepcopy (board)
               b.play_max_inference(i, j, val)
-              # play_fun(b, i, j, val)
               while b.move_to_play:
                 ii ,jj, vall = b.move_to_play.popleft()
                 b.play_max_inference(ii,jj,vall)
-                # play_fun(b, i, j, val)
-              #r = b.playout_max_inference(random_fun)
               r = playout_fun(b, play_fun, random_fun)
               if r == max_score: # win
-                return -1, -1, 0, b # number of playouts to win
+                return -1, -1, 0, b
               sum = sum + r
           if sum > bestScore:
               bestScore = sum
@@ -473,11 +496,9 @@ def flat(board, n, playout_fun, play_fun, random_fun, cst=0.4): #2, 3, 4
           for nn in range (n):
               b = copy.deepcopy (board)
               b.play (i, j, val)
-
-              #r = b.playout(random_fun)
               r = playout_fun(b, play_fun, random_fun)
               if r == max_score: # win
-                return -1, -1, 0, b # number of playouts to win
+                return -1, -1, 0, b
               sum = sum + r
           if sum > bestScore:
               bestScore = sum
@@ -485,7 +506,7 @@ def flat(board, n, playout_fun, play_fun, random_fun, cst=0.4): #2, 3, 4
               bestVal = val
               bestI = i
               bestJ = j
-    return bestI, bestJ, bestVal, None #moves[bestMove]
+    return bestI, bestJ, bestVal, None
   
 ########################
 ## UCT
@@ -497,9 +518,6 @@ Table = {}
 cst_uct = 0.4
 
 def add (board):
-    # nplayouts = [0.0 for x in range (MaxLegalMoves)]
-    # nwins = [0.0 for x in range (MaxLegalMoves)]
-    # Table [board.h] = [0, nplayouts, nwins]
     nplayouts = [0.0 for x in range (len(board.empty_cells)*16)]
     nwins = [0.0 for x in range (len(board.empty_cells)*16)]
     Table [board.h] = [0, nplayouts, nwins]
@@ -513,12 +531,10 @@ def UCT (board, playout_fun, play_fun, random_fun, cst=0.4):
     if board.terminal ():
         return board.score (), copy.deepcopy(board)
     t = look (board)
-    # print(board.h)
     if t != None:
         bestValue = -1000000.0
         best_move = (0, 0, 0)
         best_hash_index = 0
-        # for m_move in board.empty_cells:
         for mm in range(len(board.empty_cells)):
             coord1, coord2 = board.index_to_coordinate(board.empty_cells[mm])
             for val_play in board.domain[coord1][coord2]:
@@ -542,7 +558,6 @@ def UCT (board, playout_fun, play_fun, random_fun, cst=0.4):
         return res, None
     else:
         add (board)
-        #return board.playout (random_fun), copy.deepcopy(board)
         return playout_fun (board, play_fun, random_fun), copy.deepcopy(board)
 
 def BestMoveUCT (board, n, playout_fun, play_fun, random_fun, cst=0.4):
@@ -565,7 +580,6 @@ def BestMoveUCT (board, n, playout_fun, play_fun, random_fun, cst=0.4):
 
     best = (first_coord1, first_coord2, first_val)
     bestValue = t[1][first_hash]
-    # for index in moves:
     for mm in range(len(moves)):
         coord1, coord2 = board.index_to_coordinate(moves[mm])
         for val in board.domain[coord1][coord2]:
@@ -574,3 +588,64 @@ def BestMoveUCT (board, n, playout_fun, play_fun, random_fun, cst=0.4):
               bestValue = t [1] [index]
               best = (coord1, coord2, val)
     return best[0], best[1], best[2], None
+
+######################
+## nested Monte-Carlo
+
+def nested (q, S, level, playout_fun, play_fun, random_fun):
+    if (level == 0):
+        playout_fun (S, play_fun, random_fun)
+        return S
+    max_score = S.size**2
+    while not S.terminal():
+        moves = S.empty_cells
+        bestScore = 0
+        bestMove = (-1, -1, 0)
+        for m in moves:
+          i,j = S.index_to_coordinate(m)
+          for val in S.domain[i][j]:
+            S1 = copy.deepcopy (S)
+            play_fun(S1, i, j, val)
+            result = nested (q, S1, level-1, playout_fun, play_fun, random_fun)
+            sc = result.score()
+            if sc > bestScore:
+                bestScore = sc
+                bestMove = (i,j,val)
+            if sc == max_score:
+              S = result
+              q.put(1)
+              #S.display_grid()
+              #print(S.consistent(), S.score())
+              return S
+        i, j, val = bestMove
+        if i != -1:
+          play_fun(S, bestMove[0], bestMove[1], bestMove[2])
+        else:
+          break
+    q.put(1 if S.score() == max_score else 0)
+    #S.display_grid()
+    #print(S.consistent(), S.score())
+    return S
+
+def test_nested(time_budget, number_pbs, size, rm_rate, level, playout_fun, play_fun, random_fun, seed = 1234):
+  n_solved = 0
+  q = mp.Queue()
+  random.seed(seed)
+  t_start = time.time()
+  for i in range(number_pbs):
+    S = Sudoku(size, rm_rate)
+    start = time.time()
+    while time.time() - start < time_budget:
+        S_copy = copy.deepcopy(S)
+        p = mp.Process(target=nested, args=(q, S_copy, level, playout_fun, play_fun, random_fun))
+        p.start()
+        p.join(abs(time_budget-(time.time()-start)))
+        if p.is_alive():
+            p.terminate()
+        sc = q.get() if not q.empty() else 0
+        if sc == 1:
+          n_solved += 1
+          break
+    print(f"Problem: {i}, solved: {sc}, time:{time.time()-start}")
+  print("Solved:", n_solved, "time:", time.time()-t_start, "\n\n")
+  return n_solved, time.time()-t_start
