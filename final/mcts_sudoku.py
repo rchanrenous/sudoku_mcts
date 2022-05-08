@@ -31,14 +31,10 @@ for k in range (17):
     hashTable.append (l)
     
 class Sudoku:
-  # 3x3 or 4x4= so i 1 to 16. 
-  """
-  this class generate sodoku 
-  """
   def __init__(self, size=9, rm_rate=0.5):
     self.size = size
-    self.base = int(sqrt(size)) # 3, 4, 5, 6
-    self.grid = np.zeros((size, size)) # board games
+    self.base = int(sqrt(size))
+    self.grid = np.zeros((size, size))
     self.h = 0
 
     self.move_to_play = collections.deque()
@@ -55,7 +51,7 @@ class Sudoku:
     for i in remove:
       self.grid[i//size][i%size] = 0
 
-    self.domain = [[list(range(1, self.size + 1)) if self.grid[k][j] == 0 else [self.grid[k][j]] for j in range(size)] for k in range(size)] # 2D array
+    self.domain = [[list(range(1, self.size + 1)) if self.grid[k][j] == 0 else [self.grid[k][j]] for j in range(size)] for k in range(size)]
 
     for i in range(size):
       for j in range(size):
@@ -67,7 +63,7 @@ class Sudoku:
     self.empty_cells = np.where(self.grid.flatten() == 0)[0].tolist()
     self.domain_dict = {x : len(self.domain[x//self.size][x%self.size]) for x in self.empty_cells}
 
-  # debugg function
+  # debug function
   def check_domain(self):
     for i in range(self.size):
       for j in range(self.size):
@@ -80,7 +76,7 @@ class Sudoku:
               return False
     return True
 
-  # return number of possible moves
+  # returns number of possible moves
   def nb_moves(self):
     list_sum = [sum(el) for el in [[len(l) for l in ll] for ll in self.domain]]
     return (sum(list_sum))
@@ -89,7 +85,7 @@ class Sudoku:
   def score(self):
     return (self.size**2 - len(self.empty_cells)) 
 
-  # debugg function that checks if the grid is consistent
+  # debug function that checks if the grid is consistent
   def consistent(self, log=False):
     for i in range(self.size):
       for j in range(self.size):
@@ -99,7 +95,6 @@ class Sudoku:
             if self.grid[i,j] == self.grid[t]:
               if log:
                 print("ijt",i,j,t)
-              print("FALSE")
               return False
     return True
 
@@ -145,7 +140,7 @@ class Sudoku:
         if val in self.domain[k][j]:
           self.domain[k][j].remove(val)
           self.update_len_dict(k,j)
-    # remove val from the domains of the square
+    # remove val from the domains of the box
     starti = int((i)//self.base) * self.base
     endi = starti + self.base
     startj = int(j//self.base) * self.base
@@ -155,7 +150,8 @@ class Sudoku:
         if (ii != i or jj != j) and val in self.domain[ii][jj]:
           self.domain[ii][jj].remove(val) 
           self.update_len_dict(ii,jj)
-    
+  
+  # updates the length of the domain of cell (i,j)
   def update_len_dict(self, i, j):
     index = self.coordinate_to_index(i, j)
     old = self.domain_dict[index]
@@ -172,16 +168,16 @@ class Sudoku:
       if (ii,jj,val) in self.move_to_play:
         self.move_to_play.remove((ii,jj,val))
 
-  # play val at (i,j) and revise the domains
+  # plays val at (i,j) and revises the domains
   def play(self,i,j,val):
-    # put value in coordinate i, j
+    # put val in coordinate i, j
     self.grid[i,j] = val
     self.domain[i][j] = [val]
     # remove val from the domains of the variables that have a common constraint
     self.fc(i,j,val)
     self.empty_cells.remove(self.coordinate_to_index(i, j))
 
-  # play val at (i,j), revises the domains, and plays the moves with unique possible values
+  # plays val at (i,j), revises the domains, and plays the moves with unique possible values
   def play_max_inference(self,i,j,val):
     index= self.coordinate_to_index(i, j)
     if index in self.empty_cells:
@@ -192,7 +188,7 @@ class Sudoku:
       self.empty_cells.remove(index)
       self.update(i,j,val)
 
-  # play val at (i,j), revise the domains and updates the hash
+  # plays val at (i,j), revises the domains and updates the hash
   def play_hash (self, i, j, val):
     self.h = self.h ^ hashTable [0] [i] [j]
     self.h = self.h ^ hashTable [val] [i] [j]
@@ -207,7 +203,7 @@ class Sudoku:
   # returns list of neighbors of cell (i,j)
   def neighbor(self,i,j):
     L = []
-    # square of the cell
+    # box around the cell
     starti = int((i)//self.base) * self.base
     endi = starti + self.base
     startj = int(j//self.base) * self.base
@@ -266,7 +262,7 @@ class Sudoku:
           i ,j, val = self.move_to_play.popleft()
           self.play_max_inference(i,j,val)
   
-  # vusualization of the neighbor of (i,j)
+  # vusualization of the neighbors of (i,j)
   def display_neighbor(self, i, j):
     L = self.neighbor(i,j)
     for i in range(self.size):
@@ -281,7 +277,7 @@ class Sudoku:
       print("|")
     print("-- "*(self.size + int(self.base/2) + 1))
 
-  # display the grid
+  # displays the grid
   def display_grid(self):
     for i in range(self.size):
       if i%self.base == 0:
@@ -299,15 +295,16 @@ class Sudoku:
 ##################
 # playing function
 
+# plays val at (i,j) and revises the domains
 def play(S,i,j,val):
-    # put value in coordinate i, j
+    # put val in coordinate i, j
     S.grid[i,j] = val
     S.domain[i][j] = [val]
     # remove val from the domains of the variables that have a common constraint
     S.fc(i,j,val)
     S.empty_cells.remove(S.coordinate_to_index(i, j))
 
-
+# plays val at (i,j), revises the domains, and plays the moves with unique possible values
 def play_max_inference(S,i,j,val):
     index = S.coordinate_to_index(i, j)
     if index in S.empty_cells:
@@ -318,6 +315,8 @@ def play_max_inference(S,i,j,val):
       S.empty_cells.remove(index)
       S.update(i,j,val)
 
+# plays val at (i,j) and revises the domains
+# updates the hash
 def play_hash (S, i, j, val):
     S.h = S.h ^ hashTable [0] [i] [j]
     S.h = S.h ^ hashTable [val] [i] [j]
@@ -328,6 +327,8 @@ def play_hash (S, i, j, val):
     S.fc(i,j,val)
     S.empty_cells.remove(S.coordinate_to_index(i, j))
 
+# plays val at (i,j), revises the domains, and plays the moves with unique possible values
+# updates the hash
 def play_max_inference_hash(S,i,j,val):
     S.h = S.h ^ hashTable [0] [i] [j]
     S.h = S.h ^ hashTable [val] [i] [j]
@@ -340,7 +341,8 @@ def play_max_inference_hash(S,i,j,val):
       # and play the cells with single value domain
       S.empty_cells.remove(index)
       S.update(i,j,val)
-        
+
+# playing function for the random_priority move selection function
 def play_dict(S,i,j,val):
     # put value in coordinate i, j
     S.grid[i,j] = val
@@ -353,7 +355,7 @@ def play_dict(S,i,j,val):
 
 
 ######################
-## playout functions
+## random game functions
 
 # random playing function
 def playout(S, play_fun, random_fun):
@@ -404,7 +406,7 @@ def random_priority(board):
 
 
 #####################
-## experiments functions
+## experiment functions
 
 # general mcts solving function
 def mc_solve_attempt(q, S, mc_algo, playout_fun, play_fun, random_fun, n_playouts, cst=0.4):
@@ -447,7 +449,7 @@ def mc_test(time_budget, number_pbs, size, rm_rate, mc_algo, playout_fun, play_f
   return n_solved, time.time()-t_start
 
 ######################
-## FLAT mc
+## Flat Monte-Carlo
 
 def flat_max_inference(board, n, playout_fun, play_fun, random_fun, cst=0.4): #2, 3, 4
     moves = board.empty_cells
@@ -478,7 +480,7 @@ def flat_max_inference(board, n, playout_fun, play_fun, random_fun, cst=0.4): #2
               bestVal = val
               bestI = i
               bestJ = j
-    return bestI, bestJ, bestVal, None #moves[bestMove]
+    return bestI, bestJ, bestVal, None
 
 def flat(board, n, playout_fun, play_fun, random_fun, cst=0.4): #2, 3, 4
     moves = board.empty_cells
@@ -591,7 +593,7 @@ def BestMoveUCT (board, n, playout_fun, play_fun, random_fun, cst=0.4):
     return best[0], best[1], best[2], None
 
 ######################
-## nested Monte-Carlo
+## Nested Monte-Carlo
 
 def nested (q, S, level, playout_fun, play_fun, random_fun):
     if (level == 0):
@@ -615,8 +617,6 @@ def nested (q, S, level, playout_fun, play_fun, random_fun):
             if sc == max_score:
               S = result
               q.put(1)
-              #S.display_grid()
-              #print(S.consistent(), S.score())
               return S
         i, j, val = bestMove
         if i != -1:
@@ -624,8 +624,6 @@ def nested (q, S, level, playout_fun, play_fun, random_fun):
         else:
           break
     q.put(1 if S.score() == max_score else 0)
-    #S.display_grid()
-    #print(S.consistent(), S.score())
     return S
 
 def test_nested(time_budget, number_pbs, size, rm_rate, level, playout_fun, play_fun, random_fun, seed = 1234):
